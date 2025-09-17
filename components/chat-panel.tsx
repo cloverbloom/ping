@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Textarea from 'react-textarea-autosize'
 import AnimatedLogo from './animated-logo'
+import SpeechBubble from './speech-bubble'
 
 import { Message } from 'ai'
 import { ArrowUp, ChevronDown, MessageCirclePlus, Square } from 'lucide-react'
@@ -119,11 +120,13 @@ export function ChatPanel({
     >
       {messages.length === 0 && (
         <div className="mb-10 flex flex-col items-center gap-4">
+          <SpeechBubble message="Where should we begin?"delay={500}/>
+          {/* Animated logo appears below */}
           <AnimatedLogo className="size-12 text-muted-foreground" />
           {/*<IconLogo className="size-12 text-muted-foreground" />*/}
-          <p className="text-center text-3xl font-semibold">
+          {/*<p className="text-center text-3xl font-semibold">
             How can I help you today?
-          </p>
+          </p>*/}
         </div>
       )}
       <form

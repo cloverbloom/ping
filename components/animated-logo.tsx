@@ -6,10 +6,15 @@ interface AnimatedLogoProps {
 
 export default function AnimatedLogo({ className = "h-12 w-12" }: AnimatedLogoProps) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [currentEyePos, setCurrentEyePos] = useState({ 
+    left: { x: 102, y: 128 }, 
+    right: { x: 154, y: 128 } 
+  });
   const [isBlinking, setIsBlinking] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const blinkTimeoutRef = useRef<NodeJS.Timeout>();
+  const animationRef = useRef<number>();
 
   // ensure we're on client side
   useEffect(() => {
@@ -39,7 +44,7 @@ export default function AnimatedLogo({ className = "h-12 w-12" }: AnimatedLogoPr
         setTimeout(() => {
           setIsBlinking(false);
           scheduleNextBlink();
-        }, 150); // blink duration
+        }, 120); // blink duration
       }, randomDelay);
     };
 
@@ -51,30 +56,31 @@ export default function AnimatedLogo({ className = "h-12 w-12" }: AnimatedLogoPr
     };
   }, [isClient]);
 
-  // calculate eye positions based on mouse
-  const calculateEyePosition = (eyeCenterX: number, eyeCenterY: number) => {
-    // return default position until client-side hydration is complete
+  // calculate target eye position with aggressive center tracking
+  const calculateTargetEyePosition = (eyeCenterX: number, eyeCenterY: number) => {
     if (!isClient) {
       return { x: eyeCenterX, y: eyeCenterY };
     }
 
-    // get screen center
     const screenCenterX = window.innerWidth / 2;
     const screenCenterY = window.innerHeight / 2;
 
-    // calculate distance from screen center (0 to 1)
+    // calculate normalized distance from screen center (0 to 1)
     const maxDistance = Math.sqrt(screenCenterX * screenCenterX + screenCenterY * screenCenterY);
     const currentDistance = Math.sqrt(
       Math.pow(mousePos.x - screenCenterX, 2) + Math.pow(mousePos.y - screenCenterY, 2)
     );
-    const distanceRatio = Math.min(currentDistance / maxDistance, 1);
+    const normalizedDistance = Math.min(currentDistance / maxDistance, 1);
 
-    // calculate angle from screen center to mouse
+    // aggressive center tracking with exponential falloff
+    const proximityFactor = Math.pow(1 - normalizedDistance, 6);
+    const baseMovement = 240;
+    
+    // movement is more aggressive when close to center
+    const adjustedMovement = baseMovement * (0.3 + proximityFactor * 0.9);
+
     const angle = Math.atan2(mousePos.y - screenCenterY, mousePos.x - screenCenterX);
-
-    // move eyes proportionally (max 22 units - extends past circle edge)
-    const maxMovement = 90;
-    const moveDistance = distanceRatio * maxMovement;
+    const moveDistance = normalizedDistance * adjustedMovement;
 
     return {
       x: eyeCenterX + Math.cos(angle) * moveDistance,
@@ -82,8 +88,40 @@ export default function AnimatedLogo({ className = "h-12 w-12" }: AnimatedLogoPr
     };
   };
 
-  const leftEyePos = calculateEyePosition(102, 128);
-  const rightEyePos = calculateEyePosition(154, 128);
+  // smooth eye position interpolation
+  useEffect(() => {
+    if (!isClient) return;
+
+    const animate = () => {
+      const leftTarget = calculateTargetEyePosition(102, 128);
+      const rightTarget = calculateTargetEyePosition(154, 128);
+
+      setCurrentEyePos(prev => {
+        const easeSpeed = 0.15; // adjust for smoother/snappier movement
+
+        return {
+          left: {
+            x: prev.left.x + (leftTarget.x - prev.left.x) * easeSpeed,
+            y: prev.left.y + (leftTarget.y - prev.left.y) * easeSpeed
+          },
+          right: {
+            x: prev.right.x + (rightTarget.x - prev.right.x) * easeSpeed,
+            y: prev.right.y + (rightTarget.y - prev.right.y) * easeSpeed
+          }
+        };
+      });
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isClient, mousePos]);
 
   return (
     <svg
@@ -99,31 +137,31 @@ export default function AnimatedLogo({ className = "h-12 w-12" }: AnimatedLogoPr
       
       {/* left eye */}
       <circle 
-        cx={leftEyePos.x} 
-        cy={leftEyePos.y} 
+        cx={currentEyePos.left.x} 
+        cy={currentEyePos.left.y} 
         r="18" 
         fill="white"
         style={{
           transform: `scaleY(${isBlinking ? 0.1 : 1})`,
-          transformOrigin: `${leftEyePos.x}px ${leftEyePos.y}px`,
+          transformOrigin: `${currentEyePos.left.x}px ${currentEyePos.left.y}px`,
           transition: isBlinking 
             ? 'transform 0.08s cubic-bezier(0.4, 0, 0.2, 1)' 
-            : 'transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), cx 0.1s ease-out, cy 0.1s ease-out'
+            : 'transform 0.12s cubic-bezier(0.25, 0, 0.75, 1)'
         }}
       />
       
       {/* right eye */}
       <circle 
-        cx={rightEyePos.x} 
-        cy={rightEyePos.y} 
+        cx={currentEyePos.right.x} 
+        cy={currentEyePos.right.y} 
         r="18" 
         fill="white"
         style={{
           transform: `scaleY(${isBlinking ? 0.1 : 1})`,
-          transformOrigin: `${rightEyePos.x}px ${rightEyePos.y}px`,
+          transformOrigin: `${currentEyePos.right.x}px ${currentEyePos.right.y}px`,
           transition: isBlinking 
             ? 'transform 0.08s cubic-bezier(0.4, 0, 0.2, 1)' 
-            : 'transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), cx 0.1s ease-out, cy 0.1s ease-out'
+            : 'transform 0.12s cubic-bezier(0.25, 0, 0.75, 1)'
         }}
       />
     </svg>
