@@ -21,12 +21,12 @@ const fontSans = FontSans({
   variable: '--font-sans'
 })
 
-const title = 'Morphic'
+const title = 'Ping'
 const description =
-  'A fully open-source AI-powered answer engine with a generative UI.'
+  'A speech-to-knowledge web app for creating context-aware AI assistants.'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://morphic.sh'),
+  metadataBase: new URL('https://garrettnelson.co'),
   title,
   description,
   openGraph: {
@@ -36,8 +36,7 @@ export const metadata: Metadata = {
   twitter: {
     title,
     description,
-    card: 'summary_large_image',
-    creator: '@miiura'
+    creator: '@garrettfnelson'
   }
 }
 
